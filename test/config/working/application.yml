@@ -28,8 +28,6 @@ Page:
   actions:
     index: rebuild_all
     edit: rebuild
-  relationships:
-    has_many: assets
   application: Site
   options:
     form_rows: 25
