@@ -308,18 +308,32 @@ module Admin::FormHelper
 
       reflection = @resource[:class].reflect_on_association(field.to_sym)
       association = reflection.macro
+      foreign_key = reflection.through_reflection ? reflection.primary_key_name.pluralize : reflection.primary_key_name
+      
+      link_options = { :controller => "admin/#{field.pluralize}", 
+                       :action => 'new', 
+                       :back_to => "#{@back_to}##{field}", 
+                       :resource => @resource[:self].singularize, 
+                       :resource_id => @item.id, 
+                       foreign_key => @item.id }
 
       html << <<-HTML
 <a name="#{field}"></a>
 <div class="box_relationships">
   <h2>
-  #{link_to model_to_relate.human_name, :controller => "admin/#{model_to_relate_as_resource}"}
+  #{link_to model_to_relate.human_name, { :controller => "admin/#{model_to_relate_as_resource}", foreign_key => @item.id }}
+  <small>#{link_to _("Add / Change"), link_options if @current_user.can_perform?(model_to_relate, 'create')}</small>
   </h2>
       HTML
-      items = Array.new
-      items << @resource[:class].find(params[:id]).send(field) unless @resource[:class].find(params[:id]).send(field).nil?
+
+      conditions = if model_to_relate.typus_options_for(:only_user_items) && !@current_user.is_root?
+                    { Typus.user_fk => @current_user }
+                  end
+      
+      items = [@resource[:class].find(params[:id]).send(field, :conditions => conditions)].compact
+      
       unless items.empty?
-        options = { :back_to => @back_to, :resource => @resource[:self], :resource_id => @item.id }
+        options = { :back_to => "#{@back_to}##{field}", :resource => @resource[:self], :resource_id => @item.id }
         html << build_list(model_to_relate, 
                            model_to_relate.typus_fields_for(:relationship), 
                            items, 
