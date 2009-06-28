@@ -322,7 +322,12 @@ private
       message = _("{{model}} successfully created.", :model => @resource[:class].human_name)
       path = "#{params[:back_to]}?#{params[:selected]}=#{@item.id}"
     when :polymorphic
-      resource.send(@item.class.name.tableize).create(params[:item])
+      if (resource_class.reflect_on_association(@item.class.name.downcase.to_sym).macro == :has_one)  
+        @item.save
+        resource.update_attribute(@item.class.name.downcase, @item)
+      else
+        resource.send(@item.class.name.tableize).create(params[:item])
+      end
       path = "#{params[:back_to]}##{@resource[:self]}"
     end
 
