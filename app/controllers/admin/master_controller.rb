@@ -313,7 +313,11 @@ private
 
     case association
     when :belongs_to
-      @item.save
+      if (resource_class.reflect_on_association(@item.class.name.tableize.singularize.to_sym).try(:macro) == :has_one)  
+        resource.update_attribute(@item.class.name.tableize.singularize, @item)
+      else
+        @item.save
+      end
     when :has_and_belongs_to_many
       @item.save
       @item.send(params[:resource]) << resource
@@ -322,9 +326,8 @@ private
       message = _("{{model}} successfully created.", :model => @resource[:class].human_name)
       path = "#{params[:back_to]}?#{params[:selected]}=#{@item.id}"
     when :polymorphic
-      if (resource_class.reflect_on_association(@item.class.name.downcase.to_sym).macro == :has_one)  
-        @item.save
-        resource.update_attribute(@item.class.name.downcase, @item)
+      if (resource_class.reflect_on_association(@item.class.name.tableize.singularize.to_sym).try(:macro) == :has_one)  
+        resource.update_attribute(@item.class.name.tableize.singularize, @item)
       else
         resource.send(@item.class.name.tableize).create(params[:item])
       end
