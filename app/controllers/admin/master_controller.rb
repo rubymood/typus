@@ -331,7 +331,6 @@ private
       else
         resource.send(@item.class.name.tableize).create(params[:item])
       end
-      path = "#{params[:back_to]}##{@resource[:self]}"
     end
 
     flash[:success] = message || _("{{model_a}} successfully assigned to {{model_b}}.", 
