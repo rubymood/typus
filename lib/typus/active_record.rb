@@ -96,7 +96,7 @@ module Typus
     # Return tiny_mce options of the model merged into the default options
     #
     def typus_tiny_mce_options
-      typus_options_for(:tiny_mce).merge(Typus::Configuration.config[name]['fields']['options']['tiny_mce']['options'].symbolize_keys.delete_if { |key,value| value == nil})
+      typus_options_for(:tiny_mce).merge(Typus::Configuration.config[name]['fields']['options']['tiny_mce']['options'].symbolize_keys.delete_if { |key,value| value == nil })
     rescue
       typus_options_for(:tiny_mce)
     end
