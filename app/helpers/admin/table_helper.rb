@@ -143,7 +143,7 @@ module Admin::TableHelper
     content = if first_field == attribute
                 link_to item.send(attribute) || item.class.typus_options_for(:nil), link_options.merge(:controller => "admin/#{item.class.name.tableize}", :action => action, :id => item.id)
               else
-                item.send(attribute)
+                h item.send(attribute)
               end
     <<-HTML
 <td>#{content}</td>
