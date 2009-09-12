@@ -3,6 +3,7 @@ require 'test/helper'
 class Admin::FormHelperTest < ActiveSupport::TestCase
 
   include Admin::FormHelper
+  include Admin::MasterHelper
 
   include ActionView::Helpers::FormHelper
   include ActionView::Helpers::FormOptionsHelper
@@ -71,8 +72,8 @@ class Admin::FormHelperTest < ActiveSupport::TestCase
     output = typus_boolean_field('test')
 
     expected = <<-HTML
-<li><label for="item_test">Test</label>
-<input name="item[test]" type="hidden" value="0" /><input id="item_test" name="item[test]" type="checkbox" value="1" /> Checked if active</li>
+<li><label>Test</label>
+<input name="item[test]" type="hidden" value="0" /><input id="item_test" name="item[test]" type="checkbox" value="1" /> <label class=\"inline_label\" for=\"item_test\">Checked if active</label></li>
                HTML
 
     assert_equal expected, output
@@ -108,11 +109,14 @@ class Admin::FormHelperTest < ActiveSupport::TestCase
   def test_typus_file_field
 
     @resource = { :class => Post }
+    @item = Post.new
 
     output = typus_file_field('asset_file_name')
     expected = <<-HTML
 <li><label for="item_asset_file_name">Asset</label>
-<input id="item_asset" name="item[asset]" size="30" type="file" /></li>
+<input id="item_asset" name="item[asset]" size="30" type="file" />
+
+</li>
     HTML
 
     assert_equal expected, output

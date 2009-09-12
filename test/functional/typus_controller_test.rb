@@ -1,5 +1,11 @@
 require 'test/helper'
 
+# Test TypusController:
+#
+# - sign_up, sign_in & sign_out
+# - dashboard
+# - reset_password, recover_password
+
 class TypusControllerTest < ActionController::TestCase
 
   def setup
@@ -15,16 +21,14 @@ class TypusControllerTest < ActionController::TestCase
 
   def test_should_sign_in_and_redirect_to_dashboard
     typus_user = typus_users(:admin)
-    post :sign_in, { :user => { :email => typus_user.email, 
-                                :password => '12345678' } }
+    post :sign_in, { :user => { :email => typus_user.email, :password => '12345678' } }
     assert_equal typus_user.id, @request.session[:typus_user_id]
     assert_response :redirect
     assert_redirected_to admin_dashboard_path
   end
 
   def test_should_return_message_when_sign_in_fails
-    post :sign_in, { :user => { :email => 'john@example.com', 
-                                :password => 'XXXXXXXX' } }
+    post :sign_in, { :user => { :email => 'john@example.com', :password => 'XXXXXXXX' } }
     assert_response :redirect
     assert_redirected_to admin_sign_in_path
     assert flash[:error]
@@ -33,8 +37,7 @@ class TypusControllerTest < ActionController::TestCase
 
   def test_should_not_sign_in_a_disabled_user
     typus_user = typus_users(:disabled_user)
-    post :sign_in, { :user => { :email => typus_user.email, 
-                                :password => '12345678' } }
+    post :sign_in, { :user => { :email => typus_user.email, :password => '12345678' } }
     assert_nil @request.session[:typus_user_id]
     assert_response :redirect
     assert_redirected_to admin_sign_in_path
@@ -42,8 +45,7 @@ class TypusControllerTest < ActionController::TestCase
 
   def test_should_not_sign_in_a_removed_role
     typus_user = typus_users(:removed_role)
-    post :sign_in, { :user => { :email => typus_user.email, 
-                                :password => '12345678' } }
+    post :sign_in, { :user => { :email => typus_user.email, :password => '12345678' } }
     assert_equal typus_user.id, @request.session[:typus_user_id]
     assert_response :redirect
     assert_redirected_to admin_dashboard_path
@@ -89,7 +91,8 @@ class TypusControllerTest < ActionController::TestCase
 
     # Disable user ...
 
-    admin.update_attributes :status => false
+    admin.status = false
+    admin.save
 
     get :dashboard
     assert_response :redirect
@@ -127,8 +130,7 @@ class TypusControllerTest < ActionController::TestCase
   def test_should_be_redirected_if_password_does_not_match_confirmation
     typus_user = typus_users(:admin)
     post :reset_password, { :token => typus_user.token, :user => { :password => 'drowssap', :password_confirmation => 'drowssap2' } }
-    assert_response :redirect
-    assert_redirected_to admin_reset_password_path(:token => typus_user.token)
+    assert_response :success
   end
 
   def test_should_only_be_allowed_to_reset_password

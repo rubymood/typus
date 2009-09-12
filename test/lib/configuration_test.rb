@@ -11,12 +11,12 @@ class ConfigurationTest < ActiveSupport::TestCase
     return if File.exist?(initializer)
     assert_equal 'Typus', Typus::Configuration.options[:app_name]
     assert_equal 'vendor/plugins/typus/test/config/working', Typus::Configuration.options[:config_folder]
+    assert_equal :en, Typus::Configuration.options[:default_locale]
     assert_equal 'admin@example.com', Typus::Configuration.options[:email]
-    assert_equal [ [ "English", :en] ], Typus::Configuration.options[:locales]
     assert_equal false, Typus::Configuration.options[:recover_password]
+    assert_equal 'typus_users', Typus::Configuration.options[:relationship]
     assert_equal 'admin', Typus::Configuration.options[:root]
     assert_equal false, Typus::Configuration.options[:ssl]
-    assert_equal 'admin/templates', Typus::Configuration.options[:templates_folder]
     assert_equal 'TypusUser', Typus::Configuration.options[:user_class_name]
     assert_equal 'typus_user_id', Typus::Configuration.options[:user_fk]
   end
@@ -26,8 +26,7 @@ class ConfigurationTest < ActiveSupport::TestCase
     return if File.exist?(initializer)
     assert_equal 'edit', Typus::Configuration.options[:default_action_on_item]
     assert_nil Typus::Configuration.options[:end_year]
-    assert_equal 10, Typus::Configuration.options[:form_rows]
-    assert_equal true, Typus::Configuration.options[:icon_on_boolean]
+    assert_equal 15, Typus::Configuration.options[:form_rows]
     assert_equal false, Typus::Configuration.options[:index_after_save]
     assert_equal 5, Typus::Configuration.options[:minute_step]
     assert_equal 'nil', Typus::Configuration.options[:nil]

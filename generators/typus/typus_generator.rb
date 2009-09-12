@@ -4,24 +4,17 @@ class TypusGenerator < Rails::Generator::Base
 
     record do |m|
 
-      ##
       # Default name for our application.
-      #
-
       application = Rails.root.basename
 
-      ##
-      # To create <tt>application.yml</tt> and <tt>application_roles.yml</tt> detect 
-      # available AR models on the application.
-      #
-
-      models = Dir["#{Rails.root}/app/models/*.rb"].collect { |x| File.basename(x) }
+      # To create <tt>application.yml</tt> and <tt>application_roles.yml</tt> 
+      # detect available AR models on the application.
+      models = Dir['app/models/*.rb'].collect { |x| File.basename(x).sub(/\.rb$/,'').camelize }
       ar_models = []
 
       models.each do |model|
-        class_name = model.sub(/\.rb$/,'').classify
         begin
-          klass = class_name.constantize
+          klass = model.constantize
           active_record_model = klass.superclass.equal?(ActiveRecord::Base) && !klass.abstract_class?
           active_record_model_with_sti = klass.superclass.superclass.equal?(ActiveRecord::Base)
           ar_models << klass if active_record_model || active_record_model_with_sti
@@ -30,13 +23,9 @@ class TypusGenerator < Rails::Generator::Base
         end
       end
 
-      ##
       # Configuration files
-      #
-
       config_folder = Typus::Configuration.options[:config_folder]
-      folder = "#{Rails.root}/#{config_folder}"
-      Dir.mkdir(folder) unless File.directory?(folder)
+      Dir.mkdir(config_folder) unless File.directory?(config_folder)
 
       configuration = { :base => '', :roles => '' }
 
@@ -58,10 +47,8 @@ class TypusGenerator < Rails::Generator::Base
 
         # Don't show `text` fields and timestamps in lists.
         list = model_columns.reject { |c| c.sql_type == 'text' || %w( created_at updated_at ).include?(c.name) }.map(&:name)
-
         # Don't show timestamps in forms.
         form = model_columns.reject { |c| %w( id created_at updated_at ).include?(c.name) }.map(&:name)
-
         # Show all model columns in the show action.
         show = model_columns.map(&:name)
 
@@ -104,41 +91,40 @@ class TypusGenerator < Rails::Generator::Base
 
       end
 
-      Dir["#{Typus.path}/generators/typus/templates/config/typus/*"].each do |f|
+      Dir["#{Typus.root}/generators/typus/templates/config/typus/*"].each do |f|
         base = File.basename(f)
         m.template "config/typus/#{base}", "#{config_folder}/#{base}", 
                    :assigns => { :configuration => configuration }
       end
 
-      ##
-      # Initializers
-      #
+      # Initializer
 
-      m.template 'config/initializers/typus.rb', 'config/initializers/typus.rb', 
-                 :assigns => { :application => application }
-
-      ##
-      # Public folders
-      #
-
-      [ "#{Rails.root}/public/stylesheets/admin", 
-        "#{Rails.root}/public/javascripts/admin", 
-        "#{Rails.root}/public/images/admin" ].each do |folder|
-        Dir.mkdir(folder) unless File.directory?(folder)
+      [ 'config/initializers/typus.rb' ].each do |initializer|
+        m.template initializer, initializer, :assigns => { :application => application }
       end
 
-      m.file 'public/stylesheets/admin/screen.css', 'public/stylesheets/admin/screen.css'
-      m.file 'public/stylesheets/admin/reset.css', 'public/stylesheets/admin/reset.css'
-      m.file 'public/javascripts/admin/application.js', 'public/javascripts/admin/application.js'
+      # Assets
 
-      Dir["#{Typus.path}/generators/typus/templates/public/images/admin/*"].each do |f|
-        base = File.basename(f)
-        m.file "public/images/admin/#{base}", "public/images/admin/#{base}"
+      [ 'public/stylesheets/admin', 
+        'public/javascripts/admin', 
+        'public/images/admin', 
+        'public/images/admin/fancyzoom' ].each { |f| Dir.mkdir(f) unless File.directory?(f) }
+
+      [ 'public/stylesheets/admin/screen.css', 
+        'public/stylesheets/admin/reset.css', 
+        'public/images/admin/ui-icons.png' ].each { |f| m.file f, f }
+
+      %w( application fancyzoom.min jquery.min ).each do |f|
+        file = "public/javascripts/admin/#{f}.js"
+        m.file file, file
       end
 
-      ##
+      %w( bl bm br closebox ml mr tl tm tr ).each do |image|
+        file = "public/images/admin/fancyzoom/#{image}"
+        %w( gif png ).each { |e| m.file "#{file}.#{e}", "#{file}.#{e}" }
+      end
+
       # Migration file
-      #
 
       m.migration_template 'db/create_typus_users.rb', 'db/migrate', 
                             { :migration_file_name => 'create_typus_users' }

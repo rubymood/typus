@@ -2,41 +2,22 @@ module Typus
 
   module Configuration
 
-    ##
-    # Default Typus options which can be overwritten from the 
-    # initializer. Example:
-    #
-    #     Typus::Configuration.options[:recover_password]
-    #
-    # Special cases:
-    #
-    #     Typus::Configuration.options[:user_fk]
-    #     Typus.user_fk
-    #
-    #     Typus::Configuration.options[:user_class_name]
-    #     Typus.user_class
-    #
+    # Default options which can be overwritten from the initializer.
     typus_options = { :app_name => 'Typus', 
                       :config_folder => 'config/typus', 
+                      :default_locale => :en, 
                       :email => 'admin@example.com', 
-                      :locales => [ [ "English", :en ] ], 
                       :recover_password => false, 
+                      :relationship => 'typus_users', 
                       :root => 'admin', 
                       :ssl => false, 
-                      :templates_folder => 'admin/templates',
                       :user_class_name => 'TypusUser', 
                       :user_fk => 'typus_user_id' }
 
-    ##
-    # Default model options which can be overwritten from the 
-    # initializer. Example:
-    #
-    #    Model.typus_options_for(:default_action_on_item)
-    #
+    # Default options which can be overwritten from the initializer.
     model_options = { :default_action_on_item => 'edit', 
                       :end_year => nil,
-                      :form_rows => 10, 
-                      :icon_on_boolean => true, 
+                      :form_rows => 15, 
                       :index_after_save => false, 
                       :minute_step => 5, 
                       :nil => 'nil', 
@@ -54,11 +35,7 @@ module Typus
 
     mattr_accessor :options
 
-    ##
     # Read Typus Configuration files placed on <tt>config/typus/**/*.yml</tt>.
-    #
-    #   Typus::Configuration.config! overwrites @@config
-    #
     def self.config!
 
       files = Dir["#{Rails.root}/#{options[:config_folder]}/**/*.yml"].sort
@@ -76,11 +53,7 @@ module Typus
 
     mattr_accessor :config
 
-    ##
     # Read Typus Roles from configuration files placed on <tt>config/typus/**/*_roles.yml</tt>.
-    #
-    #   Typus::Configuration.roles! overwrites @@roles
-    #
     def self.roles!
 
       files = Dir["#{Rails.root}/#{options[:config_folder]}/**/*_roles.yml"].sort

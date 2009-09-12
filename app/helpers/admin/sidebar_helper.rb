@@ -30,14 +30,17 @@ module Admin::SidebarHelper
 
     case params[:action]
     when 'show'
-      if @current_user.can_perform?(@resource[:class], 'update')
-        items << (link_to _("Edit entry"), :action => 'edit', :id => @item.id)
-      end
+      condition = if @resource[:class].typus_user_id? && !@current_user.is_root?
+                    @item.owned_by?(@current_user)
+                  else
+                    @current_user.can_perform?(@resource[:class], 'destroy')
+                  end
+      items << (link_to _("Edit entry"), :action => 'edit', :id => @item.id) if condition
     end
 
     @resource[:class].typus_actions_for(params[:action]).each do |action|
       if @current_user.can_perform?(@resource[:class], action)
-        items << (link_to action.humanize, params.merge(:action => action))
+        items << (link_to _(action.humanize), params.merge(:action => action))
       end
     end
 
@@ -82,12 +85,32 @@ module Admin::SidebarHelper
 
   end
 
-  def previous_and_next
+  def previous_and_next(klass = @resource[:class])
+
     return [] unless %w( edit show update ).include?(params[:action])
+
+    # Verify ownership of record to define the kind of action which can be 
+    # performed on the record.
+
     returning(Array.new) do |items|
-      items << (link_to _("Next"), params.merge(:id => @next.id)) if @next
-      items << (link_to _("Previous"), params.merge(:id => @previous.id)) if @previous
+      if @next
+        action = if klass.typus_user_id? && !@current_user.is_root?
+                   @next.owned_by?(@current_user) ? 'edit' : 'show'
+                 else
+                   !@current_user.can_perform?(klass, 'edit') ? 'show' : params[:action]
+                 end
+        items << (link_to _("Next"), params.merge(:action => action, :id => @next.id))
+      end
+      if @previous
+        action = if klass.typus_user_id? && !@current_user.is_root?
+                   @previous.owned_by?(@current_user) ? 'edit' : 'show'
+                 else
+                   !@current_user.can_perform?(klass, 'edit') ? 'show' : params[:action]
+                 end
+        items << (link_to _("Previous"), params.merge(:action => action, :id => @previous.id))
+      end
     end
+
   end
 
   def search
@@ -123,11 +146,11 @@ module Admin::SidebarHelper
     returning(String.new) do |html|
       typus_filters.each do |key, value|
         case value
-        when :boolean:      html << boolean_filter(current_request, key)
-        when :string:       html << string_filter(current_request, key)
-        when :datetime:     html << datetime_filter(current_request, key)
-        when :belongs_to:   html << relationship_filter(current_request, key)
-        when :has_and_belongs_to_many:
+        when :boolean then      html << boolean_filter(current_request, key)
+        when :string then       html << string_filter(current_request, key)
+        when :datetime then     html << datetime_filter(current_request, key)
+        when :belongs_to then   html << relationship_filter(current_request, key)
+        when :has_and_belongs_to_many then
           html << relationship_filter(current_request, key, true)
         else
           html << "<p>#{_("Unknown")}</p>"
@@ -169,12 +192,12 @@ function surfto_#{model_pluralized}(form) {
 }
 </script>
 <!-- /Embedded JS -->
-<p><form class="form" action="#">
+<form class="form" action="#"><p>
   <select name="#{model_pluralized}" onChange="surfto_#{model_pluralized}(this.form)">
-    <option value="#{url_for params_without_filter}">#{_("filter by")} #{_(model.typus_human_name)}</option>
+    <option value="#{url_for params_without_filter}">#{_("Filter by")} #{_(model.typus_human_name)}</option>
     #{items.join("\n")}
   </select>
-</form></p>
+</p></form>
         HTML
       else
         related_items.each do |item|
@@ -194,16 +217,9 @@ function surfto_#{model_pluralized}(form) {
 
   end
 
-  ##
-  # Thinking in update datetime_filters to ...
-  #
-  #     %w( today last_few_days last_7_days last_30_days )
-  #
-  # ... which are the ones used by 'exception_logger'.
-  #
   def datetime_filter(request, filter)
     items = []
-    %w( today past_7_days this_month this_year ).each do |timeline|
+    %w( today last_few_days last_7_days last_30_days ).each do |timeline|
       switch = request.include?("#{filter}=#{timeline}") ? 'on' : 'off'
       options = { filter.to_sym => timeline, :page => nil }
       items << (link_to _(timeline.humanize), params.merge(options), :class => switch)

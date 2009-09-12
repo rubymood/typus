@@ -1,10 +1,12 @@
 class TypusController < ApplicationController
 
+  unloadable
+
   layout :select_layout
 
   include Typus::Authentication
-  include Typus::Locale
   include Typus::QuickEdit
+  include Typus::Preferences
   include Typus::Reloader
 
   if Typus::Configuration.options[:ssl]
@@ -16,7 +18,7 @@ class TypusController < ApplicationController
 
   filter_parameter_logging :password
 
-  before_filter :set_locale
+  before_filter :verify_typus_users_table_schema
 
   before_filter :reload_config_et_roles
   before_filter :require_login, 
@@ -28,13 +30,19 @@ class TypusController < ApplicationController
                 :except => [ :sign_up, :sign_in, :sign_out, 
                              :dashboard, 
                              :recover_password, :reset_password, 
-                             :quick_edit, :set_locale ]
+                             :quick_edit ]
 
   before_filter :recover_password_disabled?, 
                 :only => [ :recover_password, :reset_password ]
 
   def dashboard
-    flash[:notice] = _("There are not defined applications in config/typus/*.yml.") if Typus.applications.empty?
+    begin
+      I18n.locale = @current_user.preferences[:locale]
+      flash[:notice] = _("There are not defined applications in config/typus/*.yml.") if Typus.applications.empty?
+    rescue
+      @current_user.update_attributes :preferences => { :locale => Typus::Configuration.options[:default_locale] }
+      retry
+    end
   end
 
   def sign_in
@@ -83,8 +91,7 @@ class TypusController < ApplicationController
         session[:typus_user_id] = @user.id
         redirect_to admin_dashboard_path
       else
-        flash[:error] = _("Passwords don't match.")
-        redirect_to admin_reset_password_path(:token => params[:token])
+        render :action => 'reset_password'
       end
     end
   end
@@ -95,8 +102,12 @@ class TypusController < ApplicationController
 
     if request.post?
 
-      email, password = params[:user][:email], 'columbia'
-      user = Typus.user_class.generate(email, password)
+      password = 'columbia'
+
+      user = Typus.user_class.generate(:email => params[:user][:email], 
+                                       :password => 'columbia', 
+                                       :role => Typus::Configuration.options[:root])
+      user.status = true
 
       if user.save
         session[:typus_user_id] = user.id
@@ -116,12 +127,24 @@ class TypusController < ApplicationController
 
 private
 
+  def verify_typus_users_table_schema
+
+    unless Typus.user_class.model_fields.keys.include?(:role)
+      raise "Run `script/generate typus_update_schema_to_01 -f && rake db:migrate` to update database schema."
+    end
+
+    unless Typus.user_class.model_fields.keys.include?(:preferences)
+      raise "Run `script/generate typus_update_schema_to_02 -f && rake db:migrate` to update database schema."
+    end
+
+  end
+
   def recover_password_disabled?
     redirect_to admin_sign_in_path unless Typus::Configuration.options[:recover_password]
   end
 
   def select_layout
-    [ 'sign_up', 'sign_in', 'sign_out', 'recover_password', 'reset_password' ].include?(action_name) ? 'typus' : 'admin'
+    %w( sign_up sign_in sign_out recover_password reset_password ).include?(action_name) ? 'typus' : 'admin'
   end
 
 end

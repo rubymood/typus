@@ -1,11 +1,10 @@
 require 'test/helper'
 
-##
 # Test CRUD actions and ...
 #
 #   - Relate comment which is a has_many relationship.
 #   - Unrelate comment which is a has_many relationship.
-#
+
 class Admin::PostsControllerTest < ActionController::TestCase
 
   def setup
@@ -60,7 +59,7 @@ class Admin::PostsControllerTest < ActionController::TestCase
     assert_difference 'Post.count' do
       post :create, { :item => { :title => 'This is another title', :body => 'Body' } }
       assert_response :redirect
-      assert_redirected_to :action => 'edit'
+      assert_redirected_to :controller => 'admin/posts', :action => 'edit', :id => Post.last
     end
 
   end
@@ -99,7 +98,7 @@ class Admin::PostsControllerTest < ActionController::TestCase
     post_ = posts(:published)
     post :update, { :id => post_.id, :title => 'Updated' }
     assert_response :redirect
-    assert_redirected_to :action => 'edit', :id => post_.id
+    assert_redirected_to :controller => 'admin/posts', :action => 'edit', :id => post_.id
 
   end
 
@@ -255,6 +254,46 @@ class Admin::PostsControllerTest < ActionController::TestCase
     assert_redirected_to '/admin/posts'
     assert flash[:notice]
     assert_equal "You don't have permission to access this item.", flash[:notice]
+
+  end
+
+  def test_should_verify_admin_updating_an_item_does_not_change_typus_user_id_if_not_defined
+    post_ = posts(:owned_by_editor)
+    post :update, { :id => post_.id, :item => { :title => 'Updated by admin' } }
+    post_updated = Post.find(post_.id)
+    assert_equal post_.typus_user_id, post_updated.typus_user_id
+  end
+
+  def test_should_verify_admin_updating_an_item_does_change_typus_user_id_to_whatever_admin_wants
+    post_ = posts(:owned_by_editor)
+    post :update, { :id => post_.id, :item => { :title => 'Updated', :typus_user_id => 108 } }
+    post_updated = Post.find(post_.id)
+    assert_equal 108, post_updated.typus_user_id
+  end
+
+  def test_should_verify_editor_updating_an_item_does_not_change_typus_user_id
+
+    typus_user = typus_users(:editor)
+    @request.session[:typus_user_id] = typus_user.id
+
+    [ 108, nil ].each do |typus_user_id|
+      post_ = posts(:owned_by_editor)
+      post :update, { :id => post_.id, :item => { :title => 'Updated', :typus_user_id => typus_user_id } }
+      post_updated = Post.find(post_.id)
+      assert_equal typus_user.id, post_updated.typus_user_id
+    end
+
+  end
+
+  def test_should_verify_typus_user_id_of_item_when_creating_record
+
+    typus_user = typus_users(:editor)
+    @request.session[:typus_user_id] = typus_user.id
+
+    post :create, { :item => { :title => "Chunky Bacon", :body => "Lorem ipsum ..." } }
+    post_ = Post.find_by_title("Chunky Bacon")
+
+    assert_equal typus_user.id, post_.typus_user_id
 
   end
 
