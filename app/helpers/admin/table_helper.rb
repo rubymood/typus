@@ -169,11 +169,11 @@ module Admin::TableHelper
   def typus_table_file_field(attribute, item, link_options = {})
 
     attachment = attribute.split('_file_name').first
+    file_preview = Typus::Configuration.options[:file_preview]
 
-    if item.send(attachment).styles.member?(:typus_preview) && item.send("#{attachment}_content_type") =~ /^image\/.+/
+    if item.send(attachment).styles.member?(file_preview) && item.send("#{attachment}_content_type") =~ /^image\/.+/
       <<-HTML
-<td><a href="##{item.to_dom(:suffix => 'zoom')}" id="#{item.to_dom}" title="Click to preview">#{item.send(attribute)}</a></td>
-<div id=\"#{item.to_dom(:suffix => 'zoom')}\">#{item.typus_preview(attachment)}</div>
+<td><a id="#{item.to_dom}" href="#{item.send(attachment).url(file_preview)}" title="#{item.typus_name}">#{item.send(attribute)}</a></td>
       HTML
     else
       <<-HTML

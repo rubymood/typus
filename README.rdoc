@@ -75,9 +75,9 @@ mailing list.
 Tell everybody about *Typus*, tell your friends and colleagues about 
 *Typus* and blog about *Typus*.
 
-== Fancyzoom for assets
+== Fancybox for assets
 
-This feature is a work in progress. Only previews images.
+You can preview assets using Fancybox[http://fancybox.net/example].
 
     # db/migrate/create_photos.rb
 
@@ -100,21 +100,32 @@ This feature is a work in progress. Only previews images.
 
     # app/models/photo.rb
 
+    ##
+    # Styles are predefined but you can use your own by defining them
+    # on `config/initializers/typus.rb`.
+    #
+    #     Typus::Configuration.options[:file_preview] = :my_preview
+    #     Typus::Configuration.options[:file_thumbnail] = :my_thumbnail
+    ##
     class Photo < ActiveRecord::Base
       has_attached_file :asset, :styles => { :typus_preview => "692x461", :typus_thumbnail => "100x100" }
     end
 
     # app/views/admin/photos/_index.html.erb
 
+    <%- content_for :stylesheets do -%>
+      <%= stylesheet_link_tag 'admin/jquery.fancybox', :media => 'screen' %>
+    <%- end -%>
+
     <%- content_for :javascripts do -%>
 
-      <%= javascript_include_tag 'admin/jquery.min' %>
-      <%= javascript_include_tag 'admin/fancyzoom.min' %>
+      <%= javascript_include_tag 'admin/jquery-1.3.2.min' %>
+      <%= javascript_include_tag 'admin/jquery.fancybox-1.2.1.min' %>
 
       <script type="text/javascript" charset="utf-8">
         $(document).ready(function() {
           <%- @items.each do |item| -%>
-            $('#<%= item.to_dom %>').fancyZoom({directory:'/images/admin/fancyzoom'});
+            $("#<%= item.to_dom %>").fancybox();
           <%- end -%>
         });
       </script>
@@ -145,7 +156,9 @@ This feature is a work in progress. Only previews images.
 == Acknowledgments
 
 - *Typus* uses "Paginator" by Bruce Williams http://codefluency.com.
-- *Typus* has been inspired by "Django Admin" http://www.djangoproject.com.
+- *Typus* has been inspired by "Django Admin" http://djangoproject.com.
+- *Typus* uses http://fancybox.net.
+- *Typus* uses UI icons from http://jqueryui.com.
 
 Copyright (c) 2007-2009 Francesc Esplugas Marti, released under the 
 MIT license
