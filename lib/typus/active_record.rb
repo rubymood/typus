@@ -139,6 +139,12 @@ module Typus
       data = Typus::Configuration.config[name][filter.to_s]
       return (!data.nil?) ? data.split(', ') : []
     end
+    
+    # Check add visibility, default is true (used at has_many and habtm relationships)
+    def typus_show_add?
+      boolean = Typus::Configuration.config[name]["show_add"]
+      boolean.nil? ? true : boolean
+    end
 
     def typus_field_options_for(filter)
       Typus::Configuration.config[name]['fields']['options'][filter.to_s].split(', ').collect { |i| i.to_sym }
