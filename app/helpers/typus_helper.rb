@@ -8,7 +8,7 @@ module TypusHelper
     returning(String.new) do |html|
 
       Typus.applications.each do |app|
-
+  
         available = Typus.application(app).map do |resource|
                       resource if @current_user.resources.include?(resource)
                     end
@@ -21,18 +21,23 @@ module TypusHelper
 </tr>
         HTML
 
-        available.compact.each do |model|
-          description = Typus.module_description(model)
-          admin_items_path = { :controller => "admin/#{model.tableize}" }
-          new_admin_item_path = { :controller => "admin/#{model.tableize}", :action => 'new'}
+        available.compact.sort_by{|x| x.constantize.typus_human_name }.each do |model|
+
+          klass = model.constantize
+          klass_resource = klass.name.tableize
+
+          admin_items_path = { :controller => "admin/#{klass_resource}" }
+          new_admin_item_path = { :controller => "admin/#{klass_resource}", :action => 'new'}
+
           html << <<-HTML
 <tr class="#{cycle('even', 'odd')}">
-<td>#{link_to model.constantize.typus_human_name.pluralize, admin_items_path}<br /><small>#{description}</small></td>
+<td>#{link_to klass.typus_human_name.pluralize, admin_items_path}<br /><small>#{klass.typus_description}</small></td>
 <td class="right"><small>
-#{link_to _("Add"), new_admin_item_path if @current_user.can_perform?(model, 'create')}
+#{link_to _("Add"), new_admin_item_path if @current_user.can_perform?(klass, 'create')}
 </small></td>
 </tr>
           HTML
+
         end
 
         html << <<-HTML
@@ -70,7 +75,7 @@ module TypusHelper
 
         html << <<-HTML
 <tr class="#{cycle('even', 'odd')}">
-<td>#{link_to _(resource.humanize), resource_path}</td>
+<td>#{link_to _(resource.tableize.humanize), resource_path}</td>
 <td align="right" style="vertical-align: bottom;"></td>
 </tr>
         HTML
@@ -93,8 +98,7 @@ module TypusHelper
     resources_partials_path = 'admin/resources'
 
     partials = ActionController::Base.view_paths.map do |view_path|
-      path = Rails.vendor_rails? ? view_path.path : "#{Rails.root}/#{view_path}"
-      Dir["#{path}/#{partials_path}/*"].map { |f| File.basename(f, '.html.erb') }
+      Dir["#{view_path.path}/#{partials_path}/*"].map { |f| File.basename(f, '.html.erb') }
     end.flatten
     resources_partials = Dir["#{Rails.root}/app/views/#{resources_partials_path}/*"].map { |f| File.basename(f, '.html.erb') }
 
@@ -143,10 +147,18 @@ module TypusHelper
                                    :action => 'edit', 
                                    :id => user.id }
 
+    message = _("Are you sure you want to sign out and end your session?")
+
+    user_details = if user.can_perform?(Typus::Configuration.options[:user_class_name], 'edit')
+                     link_to user.name, admin_edit_typus_user_path, :title => "#{user.email} (#{user.role})"
+                   else
+                     user.name
+                   end
+
     <<-HTML
 <ul>
-  <li>#{_("Logged as")} #{link_to user.name, admin_edit_typus_user_path, :title => "#{user.email} (#{user.role})"}</li>
-  <li>#{link_to _("Sign out"), admin_sign_out_path }</li>
+  <li>#{_("Logged as")} #{user_details}</li>
+  <li>#{link_to _("Sign out"), admin_sign_out_path, { :confirm => message } }</li>
 </ul>
     HTML
 
@@ -161,26 +173,6 @@ module TypusHelper
 <div id="flash" class="#{flash_type}">
   <p>#{message[flash_type]}</p>
 </div>
-    HTML
-
-  end
-
-  def typus_message(message, html_class = 'notice')
-    <<-HTML
-<div id="flash" class="#{html_class}">
-  <p>#{message}</p>
-</div>
-    HTML
-  end
-
-  def locales(uri = admin_set_locale_path)
-
-    return unless Typus.locales.many?
-
-    locale_links = Typus.locales.map { |l| "<a href=\"#{uri}?locale=#{l.last}\">#{l.first.downcase}</a>" }
-
-    <<-HTML
-<p>#{_("Set language to")} #{locale_links.join(', ')}.</p>
     HTML
 
   end

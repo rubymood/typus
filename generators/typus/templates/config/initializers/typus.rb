@@ -4,12 +4,14 @@
 
 Typus::Configuration.options[:app_name] = '<%= application %>'
 # Typus::Configuration.options[:config_folder] = 'config/typus'
+# Typus::Configuration.options[:default_locale] = :en
 # Typus::Configuration.options[:email] = 'admin@example.com'
-# Typus::Configuration.options[:locales] = [ [ "English", :en ], [ "Español", :es ] ]
+# Typus::Configuration.options[:file_preview] = :typus_preview
+# Typus::Configuration.options[:file_thumbnail] = :typus_thumbnail
 # Typus::Configuration.options[:recover_password] = true
+# Typus::Configuration.options[:relationship] = 'typus_users'
 # Typus::Configuration.options[:root] = 'admin'
 # Typus::Configuration.options[:ssl] = false
-# Typus::Configuration.options[:templates_folder] = 'admin/templates'
 # Typus::Configuration.options[:user_class_name] = 'TypusUser'
 # Typus::Configuration.options[:user_fk] = 'typus_user_id'
 
@@ -17,8 +19,7 @@ Typus::Configuration.options[:app_name] = '<%= application %>'
 
 # Typus::Configuration.options[:default_action_on_item] = 'edit'
 # Typus::Configuration.options[:end_year] = Time.now.year + 1
-# Typus::Configuration.options[:form_rows] = 10
-# Typus::Configuration.options[:icon_on_boolean] = false
+# Typus::Configuration.options[:form_rows] = 15
 # Typus::Configuration.options[:index_after_save] = true
 # Typus::Configuration.options[:minute_step] = 5
 # Typus::Configuration.options[:nil] = 'nil'

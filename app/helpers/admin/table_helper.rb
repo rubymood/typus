@@ -18,58 +18,85 @@ module Admin::TableHelper
 
         fields.each do |key, value|
           case value
-          when :boolean:           html << typus_table_boolean_field(key, item)
-          when :datetime:          html << typus_table_datetime_field(key, item, fields.keys.first, link_options)
-          when :date:              html << typus_table_datetime_field(key, item, fields.keys.first, link_options)
-          when :time:              html << typus_table_datetime_field(key, item, fields.keys.first, link_options)
-          when :belongs_to:        html << typus_table_belongs_to_field(key, item)
-          when :tree:              html << typus_table_tree_field(key, item)
-          when :position:          html << typus_table_position_field(key, item)
-          when :has_and_belongs_to_many:
+          when :boolean then           html << typus_table_boolean_field(key, item)
+          when :datetime then          html << typus_table_datetime_field(key, item, link_options)
+          when :date then              html << typus_table_datetime_field(key, item, link_options)
+          when :file then              html << typus_table_file_field(key, item, link_options)
+          when :time then              html << typus_table_datetime_field(key, item, link_options)
+          when :belongs_to then        html << typus_table_belongs_to_field(key, item)
+          when :tree then              html << typus_table_tree_field(key, item)
+          when :position then          html << typus_table_position_field(key, item)
+          when :has_and_belongs_to_many then
             html << typus_table_has_and_belongs_to_many_field(key, item)
           else
-            html << typus_table_string_field(key, item, fields.keys.first, link_options)
+            html << typus_table_string_field(key, item, link_options)
           end
         end
 
-      ##
-      # This controls the action to perform. If we are on a model list we 
-      # will remove the entry, but if we inside a model we will remove the 
-      # relationship between the models.
-      #
-      # Only shown is the user can destroy items.
-      #
+        action = if model.typus_user_id? && !@current_user.is_root?
+                   # If there's a typus_user_id column on the table and logged user is not root ...
+                   item.owned_by?(@current_user) ? item.class.typus_options_for(:default_action_on_item) : 'show'
+                 elsif !@current_user.can_perform?(model, 'edit')
+                   'show'
+                 else
+                   item.class.typus_options_for(:default_action_on_item)
+                 end
 
-      if @current_user.can_perform?(model, 'delete')
+        content = link_to _(action.capitalize), :controller => "admin/#{item.class.name.tableize}", :action => action, :id => item.id
+        html << <<-HTML
+<td width="10px">#{content}</td>
+        HTML
+
+        ##
+        # This controls the action to perform. If we are on a model list we 
+        # will remove the entry, but if we inside a model we will remove the 
+        # relationship between the models.
+        #
+        # Only shown is the user can destroy/unrelate items.
+        #
+
+        trash = "<div class=\"sprite trash\">Trash</div>"
+        unrelate = "<div class=\"sprite unrelate\">Unrelate</div>"
 
         case params[:action]
         when 'index'
-          perform = link_to image_tag('admin/trash.gif'), { :action => 'destroy', 
-                                                            :id => item.id }, 
-                                                            :confirm => _("Remove entry?"), 
-                                                            :method => :delete
-        else
-          perform = link_to image_tag('admin/trash.gif'), { :action => 'unrelate', 
-                                                            :id => params[:id], 
-                                                            :association => association, 
-                                                            :resource => model, 
-                                                            :resource_id => item.id }, 
-                                                            :confirm => _("Unrelate {{unrelate_model}} from {{unrelate_model_from}}?", 
-                                                                          :unrelate_model => model.typus_human_name, 
-                                                                          :unrelate_model_from => @resource[:class].typus_human_name)
+          condition = if model.typus_user_id? && !@current_user.is_root?
+                        item.owned_by?(@current_user)
+                      else
+                        @current_user.can_perform?(model, 'destroy')
+                      end
+          perform = link_to trash, { :action => 'destroy', :id => item.id }, 
+                                     :title => _("Remove"), 
+                                     :confirm => _("Remove entry?"), 
+                                     :method => :delete if condition
+        when 'edit'
+          # If we are editing content, we can relate and unrelate always!
+          perform = link_to unrelate, { :action => 'unrelate', :id => params[:id], :resource => model, :resource_id => item.id }, 
+                                        :title => _("Unrelate"), 
+                                        :confirm => _("Unrelate {{unrelate_model}} from {{unrelate_model_from}}?", 
+                                        :unrelate_model => model.typus_human_name, 
+                                        :unrelate_model_from => @resource[:class].typus_human_name)
+        when 'show'
+          # If we are showing content, we only can relate and unrelate if we are 
+          # the owners of the owner record.
+          # If the owner record doesn't have a foreign key (Typus.user_fk) we look
+          # each item to verify the ownership.
+          condition = if @resource[:class].typus_user_id? && !@current_user.is_root?
+                        @item.owned_by?(@current_user)
+                      end
+          perform = link_to unrelate, { :action => 'unrelate', :id => params[:id], :resource => model, :resource_id => item.id }, 
+                                        :title => _("Unrelate"), 
+                                        :confirm => _("Unrelate {{unrelate_model}} from {{unrelate_model_from}}?", 
+                                        :unrelate_model => model.typus_human_name, 
+                                        :unrelate_model_from => @resource[:class].typus_human_name) if condition
         end
 
         html << <<-HTML
 <td width="10px">#{perform}</td>
+</tr>
         HTML
 
       end
-
-      html << <<-HTML
-</tr>
-      HTML
-
-    end
 
       html << "</table>"
 
@@ -90,13 +117,15 @@ module Admin::TableHelper
 
         if (model.model_fields.map(&:first).collect { |i| i.to_s }.include?(key) || model.reflect_on_all_associations(:belongs_to).map(&:name).include?(key.to_sym)) && params[:action] == 'index'
           sort_order = case params[:sort_order]
-                       when 'asc':  'desc'
-                       when 'desc': 'asc'
+                       when 'asc'   then  ['desc', '&darr;']
+                       when 'desc'  then  ['asc', '&uarr;']
+                       else
+                         [nil, nil]
                        end
           order_by = model.reflect_on_association(key.to_sym).primary_key_name rescue key
-          switch = (params[:order_by] == key) ? sort_order : ''
-          options = { :order_by => order_by, :sort_order => sort_order }
-          content = (link_to "<div class=\"#{switch}\">#{content}</div>", params.merge(options))
+          switch = (params[:order_by] == key) ? sort_order.last : ''
+          options = { :order_by => order_by, :sort_order => sort_order.first }
+          content = (link_to "#{content} #{switch}", params.merge(options))
         end
 
         headers << "<th>#{content}</th>"
@@ -131,22 +160,15 @@ module Admin::TableHelper
     HTML
   end
 
-  ##
-  # When detection of the attributes is made a default attribute 
-  # type is set. From the string_field we display other content 
-  # types.
-  #
-  def typus_table_string_field(attribute, item, first_field, link_options = {})
-
-    action = item.class.typus_options_for(:default_action_on_item)
-
-    content = if first_field == attribute
-                link_to item.send(attribute) || item.class.typus_options_for(:nil), link_options.merge(:controller => "admin/#{item.class.name.tableize}", :action => action, :id => item.id)
-              else
-                item.send(attribute)
-              end
+  def typus_table_string_field(attribute, item, link_options = {})
     <<-HTML
-<td>#{content}</td>
+<td>#{item.send(attribute)}</td>
+    HTML
+  end
+
+  def typus_table_file_field(attribute, item, link_options = {})
+    <<-HTML
+<td>#{item.typus_preview_on_table(attribute)}</td>
     HTML
   end
 
@@ -167,29 +189,22 @@ module Admin::TableHelper
                   :id => item.id, 
                   :go => position.last }
 
-      html_position << <<-HTML
-#{link_to _(position.first), params.merge(options)}
-      HTML
-
+      first_or_last = (item.respond_to?(:first?) && (position.last == 'move_higher' && item.first?)) || (item.respond_to?(:last?) && (position.last == 'move_lower' && item.last?))
+      html_position << link_to_unless(first_or_last, _(position.first), params.merge(options)) do |name|
+        %(<span class="inactive">#{name}</span>)
+      end
     end
 
     <<-HTML
-<td>#{html_position.join('/ ')}</td>
+<td>#{html_position.join(' / ')}</td>
     HTML
 
   end
 
-  def typus_table_datetime_field(attribute, item, first_field = nil, link_options = {} )
-
-    action = item.class.typus_options_for(:default_action_on_item)
+  def typus_table_datetime_field(attribute, item, link_options = {} )
 
     date_format = item.class.typus_date_format(attribute)
-    value = !item.send(attribute).nil? ? item.send(attribute).to_s(date_format) : item.class.typus_options_for(:nil)
-    content = if first_field == attribute
-                link_to value, link_options.merge(:controller => "admin/#{item.class.name.tableize}", :action => action, :id => item.id )
-              else
-                value
-              end
+    content = !item.send(attribute).nil? ? item.send(attribute).to_s(date_format) : item.class.typus_options_for(:nil)
 
     <<-HTML
 <td>#{content}</td>
@@ -199,21 +214,16 @@ module Admin::TableHelper
 
   def typus_table_boolean_field(attribute, item)
 
-    boolean_icon = item.class.typus_options_for(:icon_on_boolean)
     boolean_hash = item.class.typus_boolean(attribute)
-
     status = item.send(attribute)
-
-    link_text = unless item.send(attribute).nil?
-                  (boolean_icon) ? image_tag("admin/status_#{status}.gif") : boolean_hash["#{status}".to_sym]
-                else
-                  item.class.typus_options_for(:nil) # Content is nil, so we show nil.
-                end
+    link_text = !item.send(attribute).nil? ? boolean_hash["#{status}".to_sym] : item.class.typus_options_for(:nil)
 
     options = { :controller => item.class.name.tableize, :action => 'toggle', :field => attribute.gsub(/\?$/,''), :id => item.id }
 
     content = if item.class.typus_options_for(:toggle) && !item.send(attribute).nil?
-                link_to link_text, params.merge(options), :confirm => _("Change {{attribute}}?", :attribute => item.class.human_attribute_name(attribute).downcase)
+                link_to link_text, params.merge(options), 
+                                   :confirm => _("Change {{attribute}}?", 
+                                   :attribute => item.class.human_attribute_name(attribute).downcase)
               else
                 link_text
               end

@@ -13,6 +13,7 @@ module Typus
         extend ClassMethodsMixin
 
         attr_accessor :password
+        attr_protected :status
 
         validates_format_of :email, :with => /\A([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})\z/
         validates_presence_of :email
@@ -25,6 +26,9 @@ module Typus
         validates_presence_of :role
 
         before_save :initialize_salt, :encrypt_password, :initialize_token
+        before_save :set_preferences
+
+        serialize :preferences
 
         include InstanceMethods
 
@@ -38,17 +42,21 @@ module Typus
         Typus::Configuration.roles.keys.sort
       end
 
+      def language
+        Typus.locales
+      end
+
       def authenticate(email, password)
         user = find_by_email_and_status(email, true)
         user && user.authenticated?(password) ? user : nil
       end
 
-      def generate(email, password, role = Typus::Configuration.options[:root], status = true)
-        new :email => email, 
-            :password => password, 
-            :password_confirmation => password, 
-            :role => role, 
-            :status => status
+      def generate(*args)
+        options = args.extract_options!
+        new :email => options[:email], 
+            :password => options[:password], 
+            :password_confirmation => options[:password], 
+            :role => options[:role]
       end
 
     end
@@ -69,24 +77,23 @@ module Typus
 
       def can_perform?(resource, action, options = {})
 
-        if options[:special]
-          _action = action
-        else
-          _action = case action
-                    when 'new', 'create':       'create'
-                    when 'index', 'show':       'read'
-                    when 'edit', 'update':      'update'
-                    when 'position':            'update'
-                    when 'toggle':              'update'
-                    when 'relate', 'unrelate':  'update'
-                    when 'destroy':             'delete'
-                    else
-                      action
-                    end
-        end
+        return false if !resources.include?(resource.to_s)
 
-        # OPTIMIZE: We should not use a rescue.
-        resources[resource.to_s].split(', ').include?(_action) rescue false
+        _action = if options[:special]
+                    action
+                  else
+                    case action
+                    when 'new', 'create'       then 'create'
+                    when 'index', 'show'       then 'read'
+                    when 'edit', 'update'      then 'update'
+                    when 'position', 'toggle'  then 'update'
+                    when 'relate', 'unrelate'  then 'update'
+                    when 'destroy'             then 'delete'
+                    else action
+                    end
+                  end
+
+        resources[resource.to_s].split(', ').include?(_action)
 
       end
 
@@ -95,6 +102,20 @@ module Typus
       end
 
     protected
+
+      def language
+        preferences[:locale] rescue Typus::Configuration.options[:default_locale]
+      end
+
+      def language=(locale)
+        self.preferences = { :locale => locale }
+      end
+
+      def set_preferences
+        if self.preferences.nil? || self.preferences[:locale].nil? || self.preferences[:locale].blank?
+          self.preferences = { :locale => Typus::Configuration.options[:default_locale] }
+        end
+      end
 
       def generate_hash(string)
         Digest::SHA1.hexdigest(string)

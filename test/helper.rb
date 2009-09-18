@@ -19,7 +19,7 @@ connection = case ENV['DB']
              when /postgresql/
                { :adapter => 'postgresql', :encoding => 'unicode', :database => 'typus_test' }
              else
-               { :adapter => 'sqlite3', :dbfile => ':memory:' }
+               { :adapter => 'sqlite3', :database => ':memory:' }
              end
 
 ActiveRecord::Base.establish_connection(connection)
@@ -34,13 +34,13 @@ require File.dirname(__FILE__) + '/schema'
 
 ActiveSupport::Dependencies.load_paths = []
 %w( models controllers helpers ).each do |folder|
-  ActiveSupport::Dependencies.load_paths << File.join(Rails.root, 'vendor/plugins/typus/app', folder)
-  ActiveSupport::Dependencies.load_paths << File.join(Rails.root, 'vendor/plugins/typus/test/fixtures/app', folder)
+  ActiveSupport::Dependencies.load_paths << File.join(Typus.root, 'app', folder)
+  ActiveSupport::Dependencies.load_paths << File.join(Typus.root, 'test', 'fixtures', 'app', folder)
 end
 
 ActionController::Base.view_paths = []
 %w( app/views test/fixtures/app/views ).each do |folder|
-  ActionController::Base.append_view_path(File.join(Rails.root, 'vendor/plugins/typus', folder))
+  ActionController::Base.append_view_path(File.join(Typus.root, folder))
 end
 
 class ActiveSupport::TestCase

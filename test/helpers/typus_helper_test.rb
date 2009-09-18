@@ -91,27 +91,4 @@ class TypusHelperTest < ActiveSupport::TestCase
 
   end
 
-  def test_typus_message
-    output = typus_message('chunky bacon', 'yay')
-    expected = <<-HTML
-<div id="flash" class="yay">
-  <p>chunky bacon</p>
-</div>
-    HTML
-    assert_equal expected, output
-  end
-
-  def test_locales
-
-    options = { :locales => [ [ "English", :en ], [ "Español", :es ] ] }
-    Typus::Configuration.stubs(:options).returns(options)
-
-    output = locales('set_locale')
-    expected = <<-HTML
-<p>Set language to <a href=\"set_locale?locale=en\">english</a>, <a href=\"set_locale?locale=es\">español</a>.</p>
-    HTML
-    assert_equal expected, output
-
-  end
-
 end
