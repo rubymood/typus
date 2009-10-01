@@ -70,8 +70,10 @@ module Typus
 
     def boot!
 
-      # return unless File.exists?("#{Rails.root}/config/initializers/typus.rb") || testing?
-      return if %w( script/generate script/destroy ).include?($0)
+      commands = [ 'script/generate', 
+                   'script/destroy' ]
+
+      return if commands.include?($0)
 
       if testing?
         Typus::Configuration.options[:config_folder] = 'vendor/plugins/typus/test/config/working'
@@ -108,8 +110,10 @@ module Typus
       require 'vendor/paginator'
       require 'vendor/rss_parser'
 
-      # Run controllers generator ...
-      generator unless testing? || Rails.env.production?
+      commands = [ '/usr/local/bin/thin', 
+                   'script/server' ]
+
+      generator if commands.include?($0)
 
     end
 

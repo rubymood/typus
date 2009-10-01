@@ -14,12 +14,6 @@
   <%= stylesheet_link_tag 'admin/jquery.fancybox', :media => 'screen' %>
   <%= yield :stylesheets -%>
 
-  <%= javascript_include_tag 'admin/application' %>
-  <%= javascript_include_tag 'admin/jquery-1.3.2.min' %>
-  <%= javascript_include_tag 'admin/jquery.fancybox-1.2.1.min' %>
-  <%= include_tiny_mce_if_needed if defined?(TinyMCE) -%>
-  <%= yield :javascripts -%>
-
 </head>
 
 <body>
@@ -64,11 +58,18 @@
         <%= typus_block :location => 'shared', :partial => 'footer' %>
       </div>
       <div class="right">
+        <%= typus_block :location => 'shared', :partial => 'feedback' %>
       </div>
       <div class="clear"></div>
     </div>
 
   </div>
+
+  <%= javascript_include_tag 'admin/application' %>
+  <%= javascript_include_tag 'admin/jquery-1.3.2.min' %>
+  <%= javascript_include_tag 'admin/jquery.fancybox-1.2.1.min' %>
+  <%= include_tiny_mce_if_needed if defined?(TinyMCE) -%>
+  <%= yield :javascripts -%>
 
 </body>
 
