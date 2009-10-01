@@ -12,7 +12,7 @@ class TypusUserRolesTest < ActiveSupport::TestCase
     typus_user = typus_users(:admin)
     assert_equal 'admin', typus_user.role
 
-    models = %w( Asset Category Comment Git Page Post Status TypusUser WatchDog )
+    models = %w( Asset Category Comment Git Page Post Status TypusUser View WatchDog )
     assert_equal models, typus_user.resources.map(&:first).sort
 
     # Order exists on the roles, but, as we compact the hash, the
@@ -81,9 +81,9 @@ class TypusUserRolesTest < ActiveSupport::TestCase
     %w( read ).each { |action| assert typus_user.can_perform?('Comment', action) }
     %w( create update delete ).each { |action| assert !typus_user.can_perform?('Comment', action) }
 
-    # Post: read
-    %w( read ).each { |action| assert typus_user.can_perform?('Post', action) }
-    %w( create update delete ).each { |action| assert !typus_user.can_perform?('Post', action) }
+    # Post: read, update
+    %w( read update ).each { |action| assert typus_user.can_perform?('Post', action) }
+    %w( create delete ).each { |action| assert !typus_user.can_perform?('Post', action) }
 
   end
 

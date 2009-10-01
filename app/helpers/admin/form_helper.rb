@@ -115,27 +115,42 @@ module Admin::FormHelper
                        :resource_id => @item.id, 
                        foreign_key => @item.id }
 
+      condition = if @resource[:class].typus_user_id? && !@current_user.is_root?
+                    @item.owned_by?(@current_user)
+                  else
+                    true
+                  end
+
+      if condition
+        add_new = <<-HTML
+  <small>#{link_to _("Add new"), link_options if @current_user.can_perform?(model_to_relate, 'create')}</small>
+        HTML
+      end
+
       html << <<-HTML
 <a name="#{field}"></a>
-<div class="box_relationships">
+<div class="box_relationships" id="#{model_to_relate_as_resource}">
   <h2>
   #{link_to model_to_relate.typus_human_name.pluralize, { :controller => "admin/#{model_to_relate_as_resource}", foreign_key => @item.id }, :title => _("{{model}} filtered by {{filtered_by}}", :model => model_to_relate.typus_human_name.pluralize, :filtered_by => @item.typus_name)}
-  <small>#{link_to _("Add new"), link_options if @current_user.can_perform?(model_to_relate, 'create')}</small>
+  #{add_new}
   </h2>
       HTML
-      
+
+      ##
+      # It's a has_many relationship, so items that are already assigned to another
+      # entry are assigned to that entry.
+      #
       if model_to_relate.typus_show_add?
-        items_to_relate = (model_to_relate.find(:all) - @item.send(field))
-        #TODO: access check
-        unless items_to_relate.empty?
+        items_to_relate = model_to_relate.find(:all, :conditions => ["#{foreign_key} is ?", nil])
+        if condition && !items_to_relate.empty?
           html << <<-HTML
     #{form_tag :action => 'relate', :id => @item.id}
     #{hidden_field :related, :model, :value => model_to_relate}
-    <p>#{ select :related, :id, items_to_relate.collect { |f| [f.typus_name, f.id] }.sort_by { |e| e.first } } &nbsp; #{submit_tag _("Add"), :class => 'button'}</p>
+    <p>#{select :related, :id, items_to_relate.collect { |f| [f.typus_name, f.id] }.sort_by { |e| e.first } } &nbsp; #{submit_tag _("Add"), :class => 'button'}</p>
     </form>
           HTML
         end
-      end  
+      end
 
       conditions = if model_to_relate.typus_options_for(:only_user_items) && !@current_user.is_root?
                     { Typus.user_fk => @current_user }
@@ -181,9 +196,13 @@ module Admin::FormHelper
       reflection = @resource[:class].reflect_on_association(field.to_sym)
       association = reflection.macro
 
-      condition = !(@resource[:class].typus_user_id? && @current_user.id == @item.send(Typus.user_fk))
+      condition = if @resource[:class].typus_user_id? && !@current_user.is_root?
+                    @item.owned_by?(@current_user)
+                  else
+                    true
+                  end
 
-      unless condition
+      if condition
         add_new = <<-HTML
   <small>#{link_to _("Add new"), :controller => field, :action => 'new', :back_to => @back_to, :resource => @resource[:self], :resource_id => @item.id if @current_user.can_perform?(model_to_relate, 'create')}</small>
         HTML
@@ -191,7 +210,7 @@ module Admin::FormHelper
 
       html << <<-HTML
 <a name="#{field}"></a>
-<div class="box_relationships">
+<div class="box_relationships" id="#{model_to_relate_as_resource}">
   <h2>
   #{link_to model_to_relate.typus_human_name.pluralize, :controller => "admin/#{model_to_relate_as_resource}"}
   #{add_new}
@@ -199,7 +218,7 @@ module Admin::FormHelper
       HTML
       if model_to_relate.typus_show_add?
         items_to_relate = (model_to_relate.find(:all) - @item.send(field))
-        unless condition || items_to_relate.empty?
+        if condition || !items_to_relate.empty?
           html << <<-HTML
     #{form_tag :action => 'relate', :id => @item.id}
     #{hidden_field :related, :model, :value => model_to_relate}
@@ -208,6 +227,7 @@ module Admin::FormHelper
           HTML
         end
       end
+
       items = @resource[:class].find(params[:id]).send(field)
       unless items.empty?
         html << build_list(model_to_relate, 

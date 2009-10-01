@@ -8,7 +8,7 @@ module TypusHelper
     returning(String.new) do |html|
 
       Typus.applications.each do |app|
-  
+
         available = Typus.application(app).map do |resource|
                       resource if @current_user.resources.include?(resource)
                     end
@@ -31,7 +31,7 @@ module TypusHelper
 
           html << <<-HTML
 <tr class="#{cycle('even', 'odd')}">
-<td>#{link_to klass.typus_human_name.pluralize, admin_items_path}<br /><small>#{klass.typus_description}</small></td>
+<td>#{link_to klass.typus_human_name.pluralize, admin_items_path}<br /><small>#{_(klass.typus_description) if !klass.typus_description.nil?}</small></td>
 <td class="right"><small>
 #{link_to _("Add"), new_admin_item_path if @current_user.can_perform?(klass, 'create')}
 </small></td>
@@ -75,7 +75,7 @@ module TypusHelper
 
         html << <<-HTML
 <tr class="#{cycle('even', 'odd')}">
-<td>#{link_to _(resource.tableize.humanize), resource_path}</td>
+<td>#{link_to _(resource.titleize.capitalize), resource_path}</td>
 <td align="right" style="vertical-align: bottom;"></td>
 </tr>
         HTML

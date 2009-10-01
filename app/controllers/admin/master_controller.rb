@@ -1,5 +1,7 @@
 class Admin::MasterController < ApplicationController
 
+  skip_filter filter_chain
+
   unloadable
 
   layout 'admin'
@@ -109,17 +111,37 @@ class Admin::MasterController < ApplicationController
   end
 
   def edit
+
     item_params = params.dup
     %w( action controller model model_id back_to id resource resource_id page ).each { |p| item_params.delete(p) }
+
     # We assign the params passed trough the url
     @item.attributes = item_params
+
+    # If we want to display only user items, we don't want the links previous and 
+    # next linking to records from other users.
+    conditions = if @resource[:class].typus_options_for(:only_user_items)
+                   { Typus.user_fk => @current_user.id }
+                 end
+
+    item_params.merge!(conditions || {})
     @previous, @next = @item.previous_and_next(item_params)
+
     select_template :edit
+
   end
 
   def show
 
-    @previous, @next = @item.previous_and_next
+    check_ownership_of_item and return if @resource[:class].typus_options_for(:only_user_items)
+
+    # If we want to display only user items, we don't want the links previous and 
+    # next linking to records from other users.
+    conditions = if @resource[:class].typus_options_for(:only_user_items)
+                   { Typus.user_fk => @current_user.id }
+                 end
+
+    @previous, @next = @item.previous_and_next(conditions || {})
 
     respond_to do |format|
       format.html { select_template :show }
@@ -192,7 +214,7 @@ class Admin::MasterController < ApplicationController
   end
 
   ##
-  # Relate a model object to another, this action is used only by the
+  # Relate a model object to another, this action is used only by the 
   # has_and_belongs_to_many and has_many relationships.
   #
   def relate
@@ -223,7 +245,7 @@ class Admin::MasterController < ApplicationController
   end
 
   ##
-  # Remove relationship between models.
+  # Remove relationship between models, this action never removes items!
   #
   def unrelate
 

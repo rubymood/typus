@@ -160,17 +160,17 @@ class ActiveRecordTest < ActiveSupport::TestCase
 
   def test_should_return_options_for_post_and_page
 
-    assert_equal 10, Post.typus_options_for(:form_rows)
-    assert_equal 10, Post.typus_options_for('form_rows')
+    assert_equal 15, Post.typus_options_for(:form_rows)
+    assert_equal 15, Post.typus_options_for('form_rows')
 
     assert_equal 25, Page.typus_options_for(:form_rows)
     assert_equal 25, Page.typus_options_for('form_rows')
 
-    assert_equal 10, Asset.typus_options_for(:form_rows)
-    assert_equal 10, Asset.typus_options_for('form_rows')
+    assert_equal 15, Asset.typus_options_for(:form_rows)
+    assert_equal 15, Asset.typus_options_for('form_rows')
 
-    assert_equal 10, TypusUser.typus_options_for(:form_rows)
-    assert_equal 10, TypusUser.typus_options_for('form_rows')
+    assert_equal 15, TypusUser.typus_options_for(:form_rows)
+    assert_equal 15, TypusUser.typus_options_for('form_rows')
 
     assert Page.typus_options_for(:on_header)
     assert !TypusUser.typus_options_for(:on_header)
@@ -218,8 +218,8 @@ class ActiveRecordTest < ActiveSupport::TestCase
   end
 
   def test_should_return_relationships_for_post
-    assert_equal %w( assets categories ), Post.typus_defaults_for('relationships')
-    assert_equal %w( assets categories ), Post.typus_defaults_for(:relationships)
+    assert_equal %w( assets categories comments views ), Post.typus_defaults_for('relationships')
+    assert_equal %w( assets categories comments views ), Post.typus_defaults_for(:relationships)
     assert !Post.typus_defaults_for('relationships').empty?
     assert !Post.typus_defaults_for(:relationships).empty?
   end

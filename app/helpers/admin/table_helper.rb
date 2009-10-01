@@ -35,7 +35,7 @@ module Admin::TableHelper
 
         action = if model.typus_user_id? && !@current_user.is_root?
                    # If there's a typus_user_id column on the table and logged user is not root ...
-                   item.owned_by?(@current_user) ? 'edit' : 'show'
+                   item.owned_by?(@current_user) ? item.class.typus_options_for(:default_action_on_item) : 'show'
                  elsif !@current_user.can_perform?(model, 'edit')
                    'show'
                  else
@@ -167,20 +167,9 @@ module Admin::TableHelper
   end
 
   def typus_table_file_field(attribute, item, link_options = {})
-
-    attachment = attribute.split('_file_name').first
-    file_preview = Typus::Configuration.options[:file_preview]
-
-    if item.send(attachment).styles.member?(file_preview) && asset_is_image?(item, attachment)
-      <<-HTML
-<td><a id="#{item.to_dom}" href="#{item.send(attachment).url(file_preview)}" title="#{item.typus_name}">#{item.send(attribute)}</a></td>
-      HTML
-    else
-      <<-HTML
-<td>#{link_to item.send(attribute), item.send(attachment).url}</td>
-      HTML
-    end
-
+    <<-HTML
+<td>#{item.typus_preview_on_table(attribute)}</td>
+    HTML
   end
 
   def typus_table_tree_field(attribute, item)

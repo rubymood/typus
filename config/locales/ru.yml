@@ -26,7 +26,7 @@ ru:
   "Update entry": "Изменить запись"
   "New": "Новый"
   "Show": "Показать"
-  "Edit": 
+  "Edit": "Изменить"
   "Login": "Редактировать"
   "Setup": "Установки"
   "Create": "Создать"
@@ -55,7 +55,6 @@ ru:
   "{{model_a}} related to {{model_b}}": "{{model_a}} присоединен с {{model_b}}."
   "{{model_a}} successfully assigned to {{model_b}}": "{{model_a}} добавлен к {{model_b}}."
   "{{model_a}} unrelated from {{model_b}}": "{{model_a}} отсоединен от {{model_b}}."
-  "{{model_a}} removed from {{model_b}}": "{{model_a}} удален из {{model_b}}."
   "Your new password is {{password}}": "Ваш новый пароль: {{password}}."
   "Add entry": "Добавить запись"
   "Go to": "Перейти к"
@@ -98,6 +97,6 @@ ru:
   "Last 7 days": "Последние 7 дней"
   "Last 30 days": "Последние 30 дней"
   "{{model}} filtered by {{filtered_by}}": 
-  "True": 
+  "True": "ВЕРНО"
   "False": 
   "Are you sure you want to sign out and end your session?": 
