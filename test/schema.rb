@@ -50,6 +50,13 @@ ActiveRecord::Schema.define do
     t.string :token, :null => false
     t.string :salt, :null => false
     t.string :crypted_password, :null => false
+    t.string :preferences
+    t.timestamps
+  end
+
+  create_table :views, :force => true do |t|
+    t.string :ip, :default => '127.0.0.1'
+    t.integer :post_id
     t.timestamps
   end
 

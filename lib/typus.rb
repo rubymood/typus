@@ -3,28 +3,27 @@ module Typus
   class << self
 
     def version
-      @@version ||= File.read("#{path}/VERSION").strip
+      @@version ||= File.read("#{root}/VERSION").strip
     end
 
-    def path
+    def root
       File.dirname(__FILE__) + '/../'
     end
 
     def locales
-      Typus::Configuration.options[:locales]
-    end
-
-    def default_locale
-      locales.map(&:last).first
+      [ [ "German", 'de' ],
+        [ "English", 'en' ], 
+        [ "Español", 'es' ],
+        [ "Français", 'fr' ],
+        [ "Portuguese", 'pt-BR' ], 
+        [ "Russian", 'ru' ] ]
     end
 
     def applications
       Typus::Configuration.config.collect { |i| i.last['application'] }.compact.uniq.sort
     end
 
-    ##
-    # Returns a list of the modules of an application.
-    #
+    # List of the modules of an application.
     def application(name)
       Typus::Configuration.config.collect { |i| i.first if i.last['application'] == name }.compact.uniq.sort
     end
@@ -37,9 +36,7 @@ module Typus
       models.collect { |m| m if m.constantize.typus_options_for(:on_header) }.compact
     end
 
-    ##
-    # Return a list of resources, which are models tableless.
-    #
+    # List of resources, which are tableless models.
     def resources(models = get_model_names)
 
       all_resources = Typus::Configuration.roles.keys.map do |key|
@@ -55,10 +52,6 @@ module Typus
            "#{Rails.root}/vendor/plugins/**/app/models/**/*.rb" ].collect { |m| File.basename(m).sub(/\.rb$/,'').camelize }
     end
 
-    def module_description(modulo)
-      Typus::Configuration.config[modulo]['description']
-    end
-
     def user_class
       Typus::Configuration.options[:user_class_name].constantize
     end
@@ -67,20 +60,19 @@ module Typus
       Typus::Configuration.options[:user_fk]
     end
 
+    def relationship
+      Typus::Configuration.options[:relationship]
+    end
+
     def testing?
       Rails.env.test? && Dir.pwd == "#{Rails.root}/vendor/plugins/typus"
     end
 
-    def plugin?
-      File.exist?("#{Rails.root}/vendor/plugins/typus")
-    end
+    def boot!
 
-    ##
-    # Enable application. This is used at boot time.
-    #
-    #   Typus.enable
-    #
-    def enable
+      if testing?
+        Typus::Configuration.options[:config_folder] = 'vendor/plugins/typus/test/config/working'
+      end
 
       # Ruby Extensions
       require 'typus/hash'
@@ -91,24 +83,18 @@ module Typus
       Typus::Configuration.config!
       Typus::Configuration.roles!
 
-      # Load translation files from the plugin or the gem.
-      if plugin?
-        I18n.load_path += Dir[File.join("#{Rails.root}/vendor/plugins/typus/config/locales/**/*.{rb,yml}")]
-      else
-        Gem.path.each { |g| I18n.load_path += Dir[File.join("#{g}/gems/*typus-#{version}/config/locales/**/*.{rb,yml}")] }
-      end
-
       # Require the test/models on when testing.
-      require File.dirname(__FILE__) + '/../test/models' if Typus.testing?
+      require File.dirname(__FILE__) + '/../test/models' if testing?
 
       # Rails Extensions.
       require 'typus/active_record'
+      require 'typus/extensions/routes'
 
       # Mixins.
       require 'typus/authentication'
       require 'typus/format'
-      require 'typus/generator'
-      require 'typus/locale'
+      require 'typus/preview'
+      require 'typus/preferences'
       require 'typus/reloader'
       require 'typus/quick_edit'
       require 'typus/user'
@@ -116,6 +102,7 @@ module Typus
       # Vendor.
       require 'vendor/active_record'
       require 'vendor/paginator'
+      require 'vendor/rss_parser'
 
     end
 

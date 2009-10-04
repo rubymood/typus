@@ -8,7 +8,8 @@ class TypusUserTest < ActiveSupport::TestCase
               :email => 'test@example.com', 
               :password => '12345678', 
               :password_confirmation => '12345678', 
-              :role => Typus::Configuration.options[:root] }
+              :role => Typus::Configuration.options[:root], 
+              :preferences => { :locale => :en } }
     @typus_user = TypusUser.new(@data)
   end
 
@@ -163,8 +164,15 @@ this_is_chelm@example.com
 
   def test_should_verify_generate
     assert TypusUser.respond_to?(:generate)
-    assert TypusUser.generate('demo@example.com', 'XXXXXXXX').valid?
-    assert TypusUser.generate('demo@example.com', 'XXXX').invalid?
+    assert TypusUser.generate(:email => 'demo@example.com', :password => 'XXXXXXXX').invalid?
+    assert TypusUser.generate(:email => 'demo@example.com', :password => 'XXXXXXXX', :role => 'admin').valid?
+  end
+
+  def test_should_verify_can_perform?
+    assert TypusUser.instance_methods.include?('can_perform?')
+    @current_user = TypusUser.find(:first)
+    assert @current_user.can_perform?(TypusUser, 'delete')
+    assert @current_user.can_perform?('TypusUser', 'delete')
   end
 
 end

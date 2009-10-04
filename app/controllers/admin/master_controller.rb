@@ -1,10 +1,14 @@
 class Admin::MasterController < ApplicationController
 
+  skip_filter filter_chain
+
+  unloadable
+
   layout 'admin'
 
   include Typus::Authentication
   include Typus::Format
-  include Typus::Locale
+  include Typus::Preferences
   include Typus::Reloader
 
   if Typus::Configuration.options[:ssl]
@@ -18,7 +22,7 @@ class Admin::MasterController < ApplicationController
 
   before_filter :require_login
 
-  before_filter :set_locale
+  before_filter :set_typus_preferences
 
   before_filter :set_resource
   before_filter :find_item, 
@@ -38,8 +42,6 @@ class Admin::MasterController < ApplicationController
 
   before_filter :set_tiny_mce, 
                 :only => [ :new, :edit, :create, :update ]
-
-  helper_method :tiny_mce_plugin_installed?
 
   ##
   # This is the main index of the model. With filters, conditions 
@@ -67,6 +69,8 @@ class Admin::MasterController < ApplicationController
 
   def new
 
+    check_ownership_of_referal_item
+
     item_params = params.dup
     %w( controller action resource resource_id back_to selected ).each do |param|
       item_params.delete(param)
@@ -87,8 +91,8 @@ class Admin::MasterController < ApplicationController
 
     @item = @resource[:class].new(params[:item])
 
-    if @item.attributes.include?(Typus.user_fk)
-      @item.attributes = { Typus.user_fk => session[:typus_user_id] }
+    if @resource[:class].typus_user_id?
+      @item.attributes = { Typus.user_fk => @current_user.id }
     end
 
     if @item.valid?
@@ -107,17 +111,25 @@ class Admin::MasterController < ApplicationController
   end
 
   def edit
+
     item_params = params.dup
-    %w( action controller model model_id back_to id resource resource_id ).each { |p| item_params.delete(p) }
+    %w( action controller model model_id back_to id resource resource_id page ).each { |p| item_params.delete(p) }
+
     # We assign the params passed trough the url
     @item.attributes = item_params
+
+    item_params.merge!(set_conditions)
     @previous, @next = @item.previous_and_next(item_params)
+
     select_template :edit
+
   end
 
   def show
 
-    @previous, @next = @item.previous_and_next
+    check_ownership_of_item and return if @resource[:class].typus_options_for(:only_user_items)
+
+    @previous, @next = @item.previous_and_next(set_conditions)
 
     respond_to do |format|
       format.html { select_template :show }
@@ -130,7 +142,13 @@ class Admin::MasterController < ApplicationController
   end
 
   def update
+
     if @item.update_attributes(params[:item])
+
+      if @resource[:class].typus_user_id? && !@current_user.is_root?
+        @item.update_attributes Typus.user_fk => @current_user.id
+      end
+
       flash[:success] = _("{{model}} successfully updated.", :model => @resource[:class].typus_human_name)
       path = if @resource[:class].typus_options_for(:index_after_save)
                params[:back_to] ? "#{params[:back_to]}##{@resource[:self]}" : { :action => 'index' }
@@ -138,16 +156,20 @@ class Admin::MasterController < ApplicationController
                { :action => @resource[:class].typus_options_for(:default_action_on_item), :id => @item.id, :back_to => params[:back_to] }
              end
       redirect_to path
+
     else
+
       @previous, @next = @item.previous_and_next
       select_template :edit
+
     end
+
   end
 
   def destroy
     @item.destroy
     flash[:success] = _("{{model}} successfully removed.", :model => @resource[:class].typus_human_name)
-    redirect_to :back
+    redirect_to request.referer || admin_dashboard_path
   rescue Exception => error
     error_handler(error, params.merge(:action => 'index', :id => nil))
   end
@@ -161,7 +183,7 @@ class Admin::MasterController < ApplicationController
     else
       flash[:notice] = _("Toggle is disabled.")
     end
-    redirect_to :back
+    redirect_to request.referer || admin_dashboard_path
   end
 
   ##
@@ -176,12 +198,12 @@ class Admin::MasterController < ApplicationController
   def position
     @item.send(params[:go])
     flash[:success] = _("Record moved {{to}}.", :to => params[:go].gsub(/move_/, '').humanize.downcase)
-    redirect_to :back
+    redirect_to request.referer || admin_dashboard_path
   end
 
   ##
   # Relate a model object to another, this action is used only by the 
-  # has_and_belongs_to_many relationships.
+  # has_and_belongs_to_many and has_many relationships.
   #
   def relate
 
@@ -194,35 +216,33 @@ class Admin::MasterController < ApplicationController
                         :model_a => resource_class.typus_human_name, 
                         :model_b => @resource[:class].typus_human_name)
 
-    redirect_to :action => @resource[:class].typus_options_for(:default_action_on_item), 
-                :id => @item.id, 
-                :anchor => resource_tableized
+    redirect_to :back
 
   end
 
   ##
-  # Remove relationship between models.
+  # Remove relationship between models, this action never removes items!
   #
   def unrelate
 
     resource_class = params[:resource].classify.constantize
     resource = resource_class.find(params[:resource_id])
 
-    case params[:association]
-    when 'has_and_belongs_to_many'
-      @item.send(resource_class.table_name).delete(resource)
-      message = "{{model_a}} unrelated from {{model_b}}."
-    when 'has_many', 'has_one'
-      resource.destroy
-      message = "{{model_a}} removed from {{model_b}}."
+    if @resource[:class].
+       reflect_on_association(resource_class.table_name.singularize.to_sym).
+       try(:macro) == :has_one
+      attribute = resource_class.table_name.singularize
+      @item.update_attribute attribute, nil
+    else
+      attribute = resource_class.table_name
+      @item.send(attribute).delete(resource)
     end
 
-    flash[:success] = _(message, :model_a => resource_class.typus_human_name, :model_b => @resource[:class].typus_human_name)
+    flash[:success] = _("{{model_a}} unrelated from {{model_b}}.", 
+                        :model_a => resource_class.typus_human_name, 
+                        :model_b => @resource[:class].typus_human_name)
 
-    redirect_to :controller => @resource[:self], 
-                :action => @resource[:class].typus_options_for(:default_action_on_item), 
-                :id => @item.id, 
-                :anchor => resource_class.table_name
+    redirect_to :back
 
   end
 
@@ -247,35 +267,45 @@ private
   # If item is owned by another user, we only can perform a 
   # show action on the item. Updated item is also blocked.
   #
-  #   before_filter :check_ownership_of_item, :only => [ :edit, :update, :destroy ]
+  #   before_filter :check_ownership_of_item, :only => [ :edit, :update, :destroy, 
+  #                                                      :toggle, :position, 
+  #                                                      :relate, :unrelate ]
   #
   def check_ownership_of_item
 
-    # If current_user is a root user, by-pass.
+    # By-pass if current_user is root.
     return if @current_user.is_root?
 
-    # OPTIMIZE: `typus_users` is currently hard-coded. We should find a good name for this option.
-    if @item.respond_to?('typus_users') && !@item.send('typus_users').include?(@current_user) ||
-       @item.respond_to?(Typus.user_fk) && !(@item.send(Typus.user_fk) == session[:typus_user_id])
+    condition_typus_users = @item.respond_to?(Typus.relationship) && !@item.send(Typus.relationship).include?(@current_user)
+    condition_typus_user_id = @item.respond_to?(Typus.user_fk) && !@item.owned_by?(@current_user)
+
+    if condition_typus_users || condition_typus_user_id
        flash[:notice] = _("You don't have permission to access this item.")
-       redirect_to :back
+       redirect_to request.referer || admin_dashboard_path
     end
 
   end
 
   def check_ownership_of_items
 
-    # If current_user is a root user, by-pass.
+    # By-pass if current_user is root.
     return if @current_user.is_root?
 
-    # If current user is not root and @resource has a foreign_key which 
-    # is related to the logged user (Typus.user_fk) we only show the user 
-    # related items.
-    if @resource[:class].columns.map { |u| u.name }.include?(Typus.user_fk)
+    # Show only related items it @resource has a foreign_key (Typus.user_fk) 
+    # related to the logged user.
+    if @resource[:class].typus_user_id?
       condition = { Typus.user_fk => @current_user }
       @conditions = @resource[:class].merge_conditions(@conditions, condition)
     end
 
+  end
+
+  def check_ownership_of_referal_item
+    return unless params[:resource] && params[:resource_id]
+    klass = params[:resource].classify.constantize
+    return if !klass.typus_user_id?
+    item = klass.find(params[:resource_id])
+    raise "You're not owner of this record." unless item.owned_by?(@current_user)
   end
 
   def set_fields
@@ -294,8 +324,17 @@ private
     @order = params[:order_by] ? "#{@resource[:class].table_name}.#{params[:order_by]} #{params[:sort_order]}" : @resource[:class].typus_order_by
   end
 
+  # If we want to display only user items, we don't want the links previous and 
+  # next linking to records from other users.
+  def set_conditions
+    condition = @current_user.is_root? || 
+                !@resource[:class].typus_options_for(:only_user_items) || 
+                !@resource[:class].columns.map(&:name).include?(Typus.user_fk)
+    !condition ? { Typus.user_fk => @current_user.id } : { }
+  end
+
   def set_tiny_mce
-    if !@resource[:class].typus_tiny_mce_fields.empty? && tiny_mce_plugin_installed?
+    if !@resource[:class].typus_tiny_mce_fields.empty? && defined?(TinyMCE)
       options = @resource[:class].typus_tiny_mce_options
       self.class.class_eval { uses_tiny_mce :options => options }
     end
@@ -346,7 +385,7 @@ private
     end
 
     flash[:success] = message || _("{{model_a}} successfully assigned to {{model_b}}.", 
-                                 :model_a => @item.class, 
+                                 :model_a => @item.class.typus_human_name, 
                                  :model_b => resource_class.name)
     redirect_to path || params[:back_to]
 
@@ -356,10 +395,6 @@ private
     raise error unless Rails.env.production?
     flash[:error] = "#{error.message} (#{@resource[:class]})"
     redirect_to path
-  end
-
-  def tiny_mce_plugin_installed?
-    defined?(TinyMCE)
   end
 
 end

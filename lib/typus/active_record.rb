@@ -6,9 +6,7 @@ module Typus
 
   module ClassMethods
 
-    ##
     # Return model fields as a OrderedHash
-    #
     def model_fields
       hash = ActiveSupport::OrderedHash.new
       columns.map { |u| hash[u.name.to_sym] = u.type.to_sym }
@@ -35,9 +33,11 @@ module Typus
       human_name(:default => self.name.underscore.humanize)
     end
 
-    ##
+    def typus_description
+      Typus::Configuration.config[self.name]['description']
+    end
+
     # Form and list fields
-    #
     def typus_fields_for(filter)
 
       fields_with_type = ActiveSupport::OrderedHash.new
@@ -59,10 +59,10 @@ module Typus
 
           # Custom field_type depending on the attribute name.
           case field.to_s
-            when 'parent_id':       attribute_type = :tree
-            when /file_name/:       attribute_type = :file
-            when /password/:        attribute_type = :password
-            when 'position':        attribute_type = :position
+            when 'parent_id' then       attribute_type = :tree
+            when /file_name/ then       attribute_type = :file
+            when /password/ then        attribute_type = :password
+            when 'position' then        attribute_type = :position
           end
 
           if reflect_on_association(field)
@@ -92,27 +92,21 @@ module Typus
 
     end
 
-    ##
     # Return tiny_mce options of the model merged into the default options
-    #
     def typus_tiny_mce_options
       typus_options_for(:tiny_mce).merge(Typus::Configuration.config[name]['fields']['options']['tiny_mce']['options'].symbolize_keys.delete_if { |key,value| value == nil })
     rescue
       typus_options_for(:tiny_mce)
     end
 
-    ##
-    #  Tiny_mce fields of the model
-    #
+    # Tiny_mce fields of the model
     def typus_tiny_mce_fields
       Typus::Configuration.config[name]['fields']['options']['tiny_mce']['fields'].split(', ')
     rescue
       []
     end
 
-    ##
     # Typus sidebar filters.
-    #
     def typus_filters
 
       fields_with_type = ActiveSupport::OrderedHash.new
@@ -133,35 +127,26 @@ module Typus
 
     end
 
-    ##
-    #  Extended actions for this model on Typus.
-    #
+    # Extended actions for this model on Typus.
     def typus_actions_for(filter)
       Typus::Configuration.config[name]['actions'][filter.to_s].split(', ')
     rescue
       []
     end
 
-    ##
     # Used for +search+, +relationships+
-    #
     def typus_defaults_for(filter)
       data = Typus::Configuration.config[name][filter.to_s]
       return (!data.nil?) ? data.split(', ') : []
     end
 
-    ##
-    #
-    #
     def typus_field_options_for(filter)
       Typus::Configuration.config[name]['fields']['options'][filter.to_s].split(', ').collect { |i| i.to_sym }
     rescue
       []
     end
 
-    ##
     # We should be able to overwrite options by model.
-    #
     def typus_options_for(filter)
 
       data = Typus::Configuration.config[name]
@@ -178,25 +163,24 @@ module Typus
       !data['export'].nil? ? data['export'].split(', ') : []
     end
 
-    ##
-    # Used for order_by
-    #
+    # Used for `order_by`.
     def typus_order_by
 
       fields = typus_defaults_for(:order_by)
-      return "#{table_name}.id ASC" if fields.empty?
 
-      order = fields.map do |field|
-                (field.include?('-')) ? "#{table_name}.#{field.delete('-')} DESC" : "#{table_name}.#{field} ASC"
-              end.join(', ')
+      order = if fields.empty?
+                "#{table_name}.id ASC"
+              else
+                fields.map do |field|
+                  field.include?('-') ? "#{table_name}.#{field.delete('-')} DESC" : "#{table_name}.#{field} ASC"
+                end.join(', ')
+              end
 
       return order
 
     end
 
-    ##
     # We are able to define our own booleans.
-    #
     def typus_boolean(attribute = :default)
 
       boolean = Typus::Configuration.config[name]['fields']['options']['booleans'][attribute.to_s] rescue nil
@@ -216,28 +200,18 @@ module Typus
 
     end
 
-    ##
     # We are able to define how to display dates on Typus
-    #
     def typus_date_format(attribute = :default)
       date_format = Typus::Configuration.config[name]['fields']['options']['date_formats'][attribute.to_s].to_sym rescue nil
-      date_format = :db if date_format.nil?
-      return date_format
+      return !date_format.nil? ? date_format : :db
     end
 
-    ##
     # We are able to define which template to use to render the attribute 
     # within the form
-    #
     def typus_template(attribute)
-      Typus::Configuration.config[name]['fields']['options']['templates'][attribute.to_s]
-    rescue
-      nil
+      Typus::Configuration.config[name]['fields']['options']['templates'][attribute.to_s] rescue nil
     end
 
-    ##
-    # Build conditions
-    #
     def build_conditions(params)
 
       conditions, joins = merge_conditions, []
@@ -260,9 +234,11 @@ module Typus
         ##
         # Sidebar filters:
         #
-        #   - Booleans: true, false
-        #   - Datetime: today, past_7_days, this_month, this_year
-        #   - Integer & String: *_id and "selectors" (P.ej. category_id)
+        # - Booleans: true, false
+        # - Datetime: today, last_few_days, last_7_days, last_30_days
+        # - Integer & String: *_id and "selectors" (p.ej. category_id)
+        #
+        # today last_few_days last_7_days last_30_days
         #
         case filter_type
         when :boolean
@@ -270,10 +246,10 @@ module Typus
           conditions = merge_conditions(conditions, condition)
         when :datetime
           interval = case value
-                     when 'today':         Time.new.midnight..Time.new.midnight.tomorrow
-                     when 'past_7_days':   6.days.ago.midnight..Time.new.midnight.tomorrow
-                     when 'this_month':    Time.new.midnight.last_month..Time.new.midnight.tomorrow
-                     when 'this_year':     Time.new.midnight.last_year..Time.new.midnight.tomorrow
+                     when 'today' then         Time.new.midnight..Time.new.midnight.tomorrow
+                     when 'last_few_days' then 3.days.ago.midnight..Time.new.midnight.tomorrow
+                     when 'last_7_days' then   6.days.ago.midnight..Time.new.midnight.tomorrow
+                     when 'last_30_days' then  Time.new.midnight.last_month..Time.new.midnight.tomorrow
                      end
           condition = ["#{key} BETWEEN ? AND ?", interval.first.to_s(:db), interval.last.to_s(:db)]
           conditions = merge_conditions(conditions, condition)
@@ -292,14 +268,18 @@ module Typus
 
     end
 
+    def typus_user_id?
+      columns.map { |u| u.name }.include?(Typus.user_fk)
+    end
+
   end
 
   module InstanceMethods
 
     def previous_and_next(condition = {}, klass = self.class)
 
-      previous_conditions = "#{klass.primary_key} < #{id}"
-      next_conditions = "#{klass.primary_key} > #{id}"
+      previous_conditions = "#{klass.primary_key} < #{quote_value(id)}"
+      next_conditions = "#{klass.primary_key} > #{quote_value(id)}"
 
       if !condition.empty?
         conditions, joins = klass.build_conditions(condition)
@@ -307,13 +287,15 @@ module Typus
         next_conditions += " AND #{conditions}"
       end
 
+      select = !klass.typus_user_id? ? klass.primary_key : "#{klass.primary_key}, #{Typus.user_fk}"
+
       previous_ = klass.find :first, 
-                             :select => [klass.primary_key], 
+                             :select => select, 
                              :order => "#{klass.primary_key} DESC", 
                              :conditions => previous_conditions
 
       next_ = klass.find :first, 
-                         :select => [klass.primary_key], 
+                         :select => select, 
                          :order => "#{klass.primary_key} ASC", 
                          :conditions => next_conditions
 
@@ -323,6 +305,10 @@ module Typus
 
     def typus_name
       respond_to?(:name) ? name : "#{self.class}##{id}"
+    end
+
+    def owned_by?(user)
+      send(Typus.user_fk) == user.id
     end
 
   end
