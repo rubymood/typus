@@ -70,11 +70,6 @@ module Typus
 
     def boot!
 
-      commands = [ 'script/generate', 
-                   'script/destroy' ]
-
-      return if commands.include?($0)
-
       if testing?
         Typus::Configuration.options[:config_folder] = 'vendor/plugins/typus/test/config/working'
       end
@@ -98,7 +93,6 @@ module Typus
       # Mixins.
       require 'typus/authentication'
       require 'typus/format'
-      require 'typus/generator'
       require 'typus/preview'
       require 'typus/preferences'
       require 'typus/reloader'
@@ -109,11 +103,6 @@ module Typus
       require 'vendor/active_record'
       require 'vendor/paginator'
       require 'vendor/rss_parser'
-
-      commands = [ '/usr/local/bin/thin', 
-                   'script/server' ]
-
-      generator if commands.include?($0)
 
     end
 

@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = %q{typus}
-  s.version = "0.9.31"
+  s.version = "0.9.34"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Francesc Esplugas"]
-  s.date = %q{2009-09-30}
+  s.date = %q{2009-10-02}
   s.description = %q{Effortless backend interface for Ruby on Rails applications. (Admin scaffold generator.)}
   s.email = %q{francesc@intraducibles.com}
   s.extra_rdoc_files = [
@@ -36,6 +36,7 @@ Gem::Specification.new do |s|
      "app/views/admin/resources/index.html.erb",
      "app/views/admin/resources/new.html.erb",
      "app/views/admin/resources/show.html.erb",
+     "app/views/admin/shared/_feedback.html.erb",
      "app/views/admin/shared/_footer.html.erb",
      "app/views/admin/shared/_pagination.html.erb",
      "app/views/admin/templates/_boolean.html.erb",
@@ -63,6 +64,10 @@ Gem::Specification.new do |s|
      "config/locales/pt-BR.yml",
      "config/locales/ru.yml",
      "config/routes.rb",
+     "generators/typus/templates/auto/index.html.erb",
+     "generators/typus/templates/auto/resource_controller.rb.erb",
+     "generators/typus/templates/auto/resource_controller_test.rb.erb",
+     "generators/typus/templates/auto/resources_controller.rb.erb",
      "generators/typus/templates/config/initializers/typus.rb",
      "generators/typus/templates/config/typus/README",
      "generators/typus/templates/config/typus/application.yml",
@@ -105,7 +110,6 @@ Gem::Specification.new do |s|
      "lib/typus/extensions/routes.rb",
      "lib/typus/extensions/routes_hack.rb",
      "lib/typus/format.rb",
-     "lib/typus/generator.rb",
      "lib/typus/hash.rb",
      "lib/typus/object.rb",
      "lib/typus/preferences.rb",
@@ -113,10 +117,6 @@ Gem::Specification.new do |s|
      "lib/typus/quick_edit.rb",
      "lib/typus/reloader.rb",
      "lib/typus/string.rb",
-     "lib/typus/templates/index.html.erb",
-     "lib/typus/templates/resource_controller.rb.erb",
-     "lib/typus/templates/resource_controller_test.rb.erb",
-     "lib/typus/templates/resources_controller.rb.erb",
      "lib/typus/user.rb",
      "lib/vendor/active_record.rb",
      "lib/vendor/paginator.rb",

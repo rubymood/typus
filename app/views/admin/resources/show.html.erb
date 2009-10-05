@@ -1,6 +1,8 @@
 <% content_for :sidebar do %>
   <%= typus_block :location => @resource[:self], :partial => 'sidebar' %>
   <%= actions %>
+  <%= search %>
+  <%= previous_and_next %>
 <% end %>
 
 <h2><%= link_to @resource[:class].typus_human_name.pluralize, :action => 'index' %> &rsaquo; 
@@ -19,11 +21,12 @@
              boolean_hash = @resource[:class].typus_boolean(field.first)
              !raw_data.nil? ? boolean_hash["#{raw_data}".to_sym] : @resource[:class].typus_options_for(:nil)
            when :belongs_to
-             raw_data.typus_name
+             raw_data.typus_name if !raw_data.nil?
            when :file
              @item.typus_preview(field.first)
            when :text
-             defined?(RDiscount) ? markdown(raw_data) : raw_data
+             text = h(raw_data)
+             defined?(RDiscount) ? markdown(text) : text
            else
              h(raw_data)
            end

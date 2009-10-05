@@ -1,3 +1,5 @@
+require 'ftools'
+
 class TypusGenerator < Rails::Generator::Base
 
   def manifest
@@ -10,16 +12,17 @@ class TypusGenerator < Rails::Generator::Base
       # To create <tt>application.yml</tt> and <tt>application_roles.yml</tt> 
       # detect available AR models on the application.
       models = Dir['app/models/*.rb'].collect { |x| File.basename(x).sub(/\.rb$/,'').camelize }
-      ar_models = []
+      @ar_models = []
 
       models.each do |model|
         begin
           klass = model.constantize
           active_record_model = klass.superclass.equal?(ActiveRecord::Base) && !klass.abstract_class?
           active_record_model_with_sti = klass.superclass.superclass.equal?(ActiveRecord::Base)
-          ar_models << klass if active_record_model || active_record_model_with_sti
+          @ar_models << klass if active_record_model || active_record_model_with_sti
         rescue Exception => error
-          puts "=> [typus] #{error.message} on '#{class_name}'."
+          puts "=> [typus] #{error.message} on '#{model.class.name}'."
+          exit
         end
       end
 
@@ -29,7 +32,7 @@ class TypusGenerator < Rails::Generator::Base
 
       configuration = { :base => '', :roles => '' }
 
-      ar_models.sort{ |x,y| x.class_name <=> y.class_name }.each do |model|
+      @ar_models.sort{ |x,y| x.class_name <=> y.class_name }.each do |model|
 
         # Detect all relationships except polymorphic belongs_to using reflection.
         relationships = [ :belongs_to, :has_and_belongs_to_many, :has_many, :has_one ].map do |relationship|
@@ -123,6 +126,42 @@ class TypusGenerator < Rails::Generator::Base
       %w( closebox left progress right shadow_e shadow_n shadow_ne shadow_nw shadow_s shadow_se shadow_sw shadow_w title_left title_main title_right ).each do |image|
         file = "public/images/admin/fancybox/fancy_#{image}.png"
         m.file file, file
+      end
+
+      %w( app/views/admin app/controllers/admin test/functional/admin ).each do |folder|
+        FileUtils.mkdir_p(folder) unless File.directory?(folder)
+      end
+
+      ##
+      # Generate:
+      #   `app/controllers/admin/#{resource}_controller.rb`
+      #   `test/functional/admin/#{resource}_controller_test.rb`
+      #
+      Typus.models.each do |model|
+
+        m.template "auto/resources_controller.rb.erb", 
+                   "app/controllers/admin/#{model.tableize}_controller.rb", 
+                   :assigns => { :model => model }
+
+        m.template "auto/resource_controller_test.rb.erb", 
+                   "test/functional/admin/#{model.tableize}_controller_test.rb", 
+                   :assigns => { :model => model }
+
+      end
+
+      ##
+      # Generate controllers for tableless models.
+      #
+      Typus.resources.each do |resource|
+
+        m.template "auto/resource_controller.rb.erb", 
+                   "app/controllers/admin/#{resource.underscore}_controller.rb", 
+                   :assigns => { :resource => resource }
+
+        views_folder = "app/views/admin/#{resource.underscore}"
+        FileUtils.mkdir_p(views_folder) unless File.directory?(views_folder)
+        m.file "auto/index.html.erb", "#{views_folder}/index.html.erb"
+
       end
 
       # Migration file
